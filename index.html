@@ -99,6 +99,7 @@ hr{border:none;border-top:1px solid #eee;margin:16px 0}
   <button class="nav-btn" onclick="showPage('checklist')">✅ Checklist</button>
   <button class="nav-btn" onclick="showPage('meals')">🥗 Meal Tutorials</button>
   <button class="nav-btn" onclick="showPage('workouts')">💪 Workouts</button>
+  <button class="nav-btn" onclick="showPage('calories')">📷 Calories</button>
 </div>
 
 <!-- MY PLAN PAGE -->
@@ -113,6 +114,7 @@ hr{border:none;border-top:1px solid #eee;margin:16px 0}
       <p class="sec">Your Goals</p>
       <div class="field"><label>Goal weight and body type *</label><input id="goalWeight" placeholder="e.g. 120 lbs, curvy / slim / athletic…"/></div>
       <div class="field"><label>Specific health goals *</label><textarea id="healthGoals" placeholder="e.g. lose 20 lbs, build muscle, more energy…"></textarea></div>
+      <div class="field"><label>Daily calorie goal (optional)</label><input id="calorieGoal" type="number" placeholder="e.g. 1600, 2000, 2800…"/></div>
     </div>
     <div class="card">
       <p class="sec">Health Background</p>
@@ -200,6 +202,41 @@ hr{border:none;border-top:1px solid #eee;margin:16px 0}
     <p style="font-size:0.8rem;color:#888">Tap any exercise to see how to do it correctly</p>
   </div>
   <div id="workoutTutorials"></div>
+</div>
+
+<!-- CALORIE TRACKER PAGE -->
+<div class="page" id="page-calories">
+  <div class="card">
+    <p class="sec">Today's Calories</p>
+    <div class="progress-text" id="calorieProgressText">0 of 0 cal</div>
+    <div class="progress-bar"><div class="progress-fill" id="calorieProgressFill" style="width:0%"></div></div>
+    <div class="field" style="margin-top:14px">
+      <label>Daily calorie goal</label>
+      <input id="calorieGoalTracker" type="number" placeholder="e.g. 1600, 2000, 2800…" oninput="updateCalorieGoal()"/>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="sec">Scan Your Food</p>
+    <p style="font-size:0.8rem;color:#888;margin-bottom:14px">Take a photo or upload an image of your meal and AI will estimate the calories.</p>
+    <input type="file" id="foodPhoto" accept="image/*" capture="environment" style="display:none" onchange="analyzeFood(event)"/>
+    <button class="btn" onclick="document.getElementById('foodPhoto').click()">📷 Take or Upload Photo</button>
+    <div class="err" id="calorieErr"></div>
+    <div id="calorieLoading" style="display:none;text-align:center;padding:20px 0">
+      <div class="spinner" style="margin:0 auto 12px"></div>
+      <p style="color:#888;font-size:0.85rem">Analyzing your food…</p>
+    </div>
+    <div id="foodPreview" style="display:none;margin-top:14px">
+      <img id="foodPreviewImg" style="width:100%;border-radius:10px;margin-bottom:12px"/>
+      <div id="foodResult" style="background:#f8f7f4;border-radius:10px;padding:14px;font-size:0.875rem;line-height:1.7"></div>
+      <button class="btn-sm" style="margin-top:10px;width:100%" onclick="addFoodToLog()">+ Add to Today's Log</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="sec">Today's Log</p>
+    <div id="foodLog"></div>
+  </div>
 </div>
 
 <script>
@@ -360,12 +397,19 @@ async function generate(){
         dailySchedule: document.getElementById('dailySchedule').value,
         mealPrep: document.getElementById('mealPrep').value,
         diet: getDiet(),
-        groceryBudget: document.getElementById('groceryBudget').value
+        groceryBudget: document.getElementById('groceryBudget').value,
+        calorieGoal: document.getElementById('calorieGoal').value
       })
     });
     var data = await response.json();
     if(!response.ok) throw new Error(data.error||'Something went wrong');
     plans={meal:data.meal||'',workout:data.workout||'',tips:data.tips||''};
+    var cg=document.getElementById('calorieGoal').value;
+    if(cg){
+      document.getElementById('calorieGoalTracker').value=cg;
+      calorieGoal=parseInt(cg)||0;
+      renderCalorieProgress();
+    }
     document.getElementById('tabBody').textContent=data.meal||'';
     document.getElementById('loadingDiv').style.display='none';
     document.getElementById('resultsDiv').style.display='block';
@@ -511,7 +555,244 @@ function toggleExercise(i){
   document.getElementById('ex-'+i).classList.toggle('on');
 }
 renderWorkouts();
+
+// ── CALORIE TRACKER ──
+var calorieGoal = 0;
+var foodLog = [];
+var lastAnalyzedFood = null;
+
+function updateCalorieGoal(){
+  calorieGoal = parseInt(document.getElementById('calorieGoalTracker').value) || 0;
+  renderCalorieProgress();
+}
+
+function renderCalorieProgress(){
+  var total = foodLog.reduce(function(sum,f){return sum + (f.calories||0);}, 0);
+  document.getElementById('calorieProgressText').textContent = total + ' of ' + (calorieGoal||'—') + ' cal';
+  var pct = calorieGoal ? Math.min(100, Math.round(total/calorieGoal*100)) : 0;
+  document.getElementById('calorieProgressFill').style.width = pct+'%';
+
+  var html='';
+  if(foodLog.length===0){
+    html='<p style="font-size:0.85rem;color:#888">No food logged yet today. Scan a meal to get started!</p>';
+  } else {
+    foodLog.forEach(function(f,i){
+      html+='<div class="checklist-item">';
+      html+='<span style="font-size:1.3rem">'+f.emoji+'</span>';
+      html+='<span class="check-text" style="flex:1;margin-left:10px">'+f.name+' — <strong>'+f.calories+' cal</strong></span>';
+      html+='<button class="check-delete" onclick="removeFoodLog('+i+')">×</button>';
+      html+='</div>';
+    });
+  }
+  document.getElementById('foodLog').innerHTML=html;
+}
+function removeFoodLog(i){
+  foodLog.splice(i,1);
+  renderCalorieProgress();
+}
+
+function analyzeFood(event){
+  var file = event.target.files[0];
+  if(!file) return;
+  var errEl = document.getElementById('calorieErr');
+  errEl.style.display='none';
+  document.getElementById('foodPreview').style.display='none';
+  document.getElementById('calorieLoading').style.display='block';
+
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    var base64 = e.target.result.split(',')[1];
+    var mediaType = file.type || 'image/jpeg';
+    document.getElementById('foodPreviewImg').src = e.target.result;
+    try {
+      var response = await fetch('/api/analyze-food', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ image: base64, mediaType: mediaType })
+      });
+      var data = await response.json();
+      if(!response.ok) throw new Error(data.error||'Something went wrong');
+      lastAnalyzedFood = data;
+      var html = '<strong style="font-size:1rem">'+data.emoji+' '+data.name+'</strong><br/>';
+      html += '<span style="color:#7a9e7e;font-weight:600;font-size:1.1rem">'+data.calories+' calories</span><br/><br/>';
+      html += data.description;
+      document.getElementById('foodResult').innerHTML = html;
+      document.getElementById('calorieLoading').style.display='none';
+      document.getElementById('foodPreview').style.display='block';
+    } catch(err){
+      document.getElementById('calorieLoading').style.display='none';
+      errEl.textContent = 'Error: '+err.message;
+      errEl.style.display='block';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function addFoodToLog(){
+  if(!lastAnalyzedFood) return;
+  foodLog.push(lastAnalyzedFood);
+  renderCalorieProgress();
+  document.getElementById('foodPreview').style.display='none';
+  document.getElementById('foodPhoto').value='';
+  lastAnalyzedFood=null;
+}
+renderCalorieProgress();
+
 </script>
 </body>
 </html>
+ export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
+  const { goalWeight, healthGoals, medicalHistory, digestiveIssues, dailySchedule, mealPrep, diet, groceryBudget, calorieGoal } = req.body;
+
+  const prompt = `You are a certified nutritionist and personal trainer. Create a fully personalized wellness plan. CRITICAL: If they list ANY allergy, that food must NEVER appear anywhere in the plan.
+
+Profile:
+- Goal weight/body type: ${goalWeight}
+- Health goals: ${healthGoals}
+- Medical history/allergies: ${medicalHistory || 'None'}
+- Digestive issues: ${digestiveIssues || 'None'}
+- Daily schedule: ${dailySchedule || 'Not specified'}
+- Meal prep routine: ${mealPrep || 'Not specified'}
+- Dietary pattern: ${diet || 'No restrictions'}
+- Weekly grocery budget: ${groceryBudget || 'Not specified'}
+- Daily calorie goal: ${calorieGoal || 'Not specified - use standard guidance based on their goals'}
+
+RULES:
+- Weight loss goals: low-calorie high-fiber high-protein foods, include calorie counts
+- Muscle gain goals: high-protein foods (chicken, eggs, beef, Greek yogurt), 2500-3000 calories
+- If a daily calorie goal is specified, design each day's meals to total approximately that number of calories (within 100-150 calories), and include a per-meal calorie count in parentheses after each meal
+- ALLERGY: if allergic to anything, remove it from EVERY meal, no exceptions
+- Vegan: no meat fish dairy or eggs. Vegetarian: no meat or fish
+- Bloating: avoid raw onions, excess beans, carbonated drinks
+- Match meal complexity to their prep routine and budget
+
+Use EXACTLY this format for meal (do all 7 days):
+MONDAY
+• Breakfast: [food]
+• Lunch: [food]
+• Dinner: [food]
+• Snack: [food]
+
+TUESDAY
+• Breakfast: [food]
+(etc for all 7 days)
+
+Use EXACTLY this format for workout:
+MONDAY — [Focus] ([duration])
+• [Exercise] — [sets] x [reps]
+• [Exercise] — [sets] x [reps]
+
+TUESDAY — [Focus] ([duration])
+(etc for all 7 days, weight loss = cardio focus, muscle = strength focus)
+
+Use EXACTLY this format for tips:
+NUTRITION
+• [specific tip based on their goals]
+• [specific tip]
+
+DIGESTION
+• [specific tip based on their digestive issues]
+• [specific tip]
+
+FITNESS
+• [specific tip]
+• [specific tip]
+
+MINDSET
+• [specific tip]
+• [specific tip]
+
+Respond with ONLY valid JSON, no markdown:
+{"meal":"...","workout":"...","tips":"..."}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'API error');
+    const text = data.content?.[0]?.text;
+    if (!text) throw new Error('No response from AI');
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    } catch(e) {
+      parsed = { meal: text, workout: '', tips: '' };
+    }
+
+    res.status(200).json(parsed);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+  const { image, mediaType } = req.body;
+  if (!image) { res.status(400).json({ error: 'No image provided' }); return; }
+
+  const prompt = `Look at this photo of food and estimate its nutritional content. Identify the dish/food item, estimate the total calories for the portion shown, and give a short description including a rough breakdown (protein/carbs/fat if visible).
+
+Respond with ONLY valid JSON, no markdown, no extra text:
+{"name":"short food name","emoji":"single emoji that represents this food","calories":number,"description":"1-2 sentence description with a rough macro breakdown"}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType || 'image/jpeg', data: image } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'API error');
+    const text = data.content?.[0]?.text;
+    if (!text) throw new Error('No response');
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    } catch (e) {
+      throw new Error('Could not parse food analysis');
+    }
+
+    res.status(200).json(parsed);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
