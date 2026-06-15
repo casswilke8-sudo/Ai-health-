@@ -380,18 +380,19 @@ function formatPlanText(text){
   var html = '';
   var dayNames = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
   var categoryNames = ['NUTRITION','DIGESTION','FITNESS','MINDSET'];
+  var first = true;
   lines.forEach(function(line){
     var trimmed = line.trim();
     var isDay = dayNames.some(function(d){return trimmed.indexOf(d)===0;});
     var isCategory = categoryNames.indexOf(trimmed)===0;
-    if(isDay){
-      html += '<div style="margin-top:18px;margin-bottom:8px;font-weight:700;font-size:0.95rem;color:#2a2a2a;background:#f0ede8;padding:8px 12px;border-radius:8px;border-left:4px solid #7a9e7e">'+trimmed+'</div>';
-    } else if(isCategory){
-      html += '<div style="margin-top:18px;margin-bottom:8px;font-weight:700;font-size:0.85rem;letter-spacing:0.08em;color:#7a9e7e;text-transform:uppercase">'+trimmed+'</div>';
+    if(isDay || isCategory){
+      html += '<div style="margin-top:'+(first?'0':'28px')+';margin-bottom:14px;font-weight:700;font-size:1rem;color:#2a2a2a;letter-spacing:0.04em">'+trimmed+'</div>';
+      first = false;
     } else if(trimmed===''){
-      html += '<div style="height:4px"></div>';
+      // skip blank lines, spacing handled by headers
     } else {
-      html += '<div style="padding:2px 0">'+trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
+      first = false;
+      html += '<div style="padding:4px 0 4px 4px;line-height:1.6">'+trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
     }
   });
   return html;
@@ -557,13 +558,13 @@ function extractMealItems(mealText){
   if(!mealText) return [];
   var items=[];
   mealText.split('\n').forEach(function(line){
-    var m=line.match(/•\s*(Breakfast|Lunch|Dinner|Snack):\s*(.+)/i);
+    var m=line.match(/(Breakfast|Lunch|Dinner|Snack)\s*:\s*(.+)/i);
     if(m){
       var food=m[2].trim();
       var calMatch=food.match(/\((\d+)\s*cal[^\)]*\)/i);
       var calories=calMatch?calMatch[1]+' cal':'';
       food=food.replace(/\s*\(\d+\s*cal[^\)]*\)/i,'').replace(/\.$/,'').trim();
-      items.push({name:food,calories:calories,mealType:m[1]});
+      if(food) items.push({name:food,calories:calories,mealType:m[1]});
     }
   });
   var seen={},unique=[];
@@ -571,15 +572,23 @@ function extractMealItems(mealText){
     var key=it.name.toLowerCase();
     if(!seen[key]){ seen[key]=true; unique.push(it); }
   });
-  return unique.slice(0,10);
+  return unique.slice(0,14);
 }
 function extractExerciseItems(workoutText){
   if(!workoutText) return [];
+  var dayNames=['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
   var items=[];
   workoutText.split('\n').forEach(function(line){
-    var m=line.match(/•\s*(.+?)\s*—\s*(.+)/);
+    var trimmed=line.trim();
+    if(!trimmed) return;
+    var isDayHeader=dayNames.some(function(d){return trimmed.toUpperCase().indexOf(d)===0;});
+    if(isDayHeader) return;
+    var clean=trimmed.replace(/^[•\-\*\u2022]\s*/,'');
+    var m=clean.match(/^(.+?)\s*[–—\-]\s*(.+)$/);
     if(m){
-      items.push({name:m[1].trim(),sets:m[2].trim()});
+      var name=m[1].trim();
+      var sets=m[2].trim();
+      if(name && sets) items.push({name:name,sets:sets});
     }
   });
   var seen={},unique=[];
@@ -587,7 +596,7 @@ function extractExerciseItems(workoutText){
     var key=it.name.toLowerCase();
     if(!seen[key]){ seen[key]=true; unique.push(it); }
   });
-  return unique.slice(0,12);
+  return unique.slice(0,14);
 }
 function buildMealsFromPlan(mealText){
   return extractMealItems(mealText).map(function(it){
