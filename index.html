@@ -163,7 +163,9 @@ hr{border:none;border-top:1px solid #eee;margin:16px 0}
         <button class="tab" onclick="switchTab('workout',this)">💪 Workout</button>
         <button class="tab" onclick="switchTab('tips',this)">✨ Tips</button>
       </div>
-      <div class="tab-body" id="tabBody"></div>
+      <div class="tab-body" id="tabMeal"></div>
+      <div class="tab-body" id="tabWorkout" style="display:none"></div>
+      <div class="tab-body" id="tabTips" style="display:none"></div>
     </div>
     <button class="btn-outline" style="width:100%;margin-top:12px" onclick="restart()">← Start over</button>
   </div>
@@ -375,24 +377,35 @@ function getDiet(){
   return s.length?s.join(', '):'No restrictions';
 }
 function formatPlanText(text){
-  if(!text) return '';
+  if(!text) return '<p style="color:#888;font-size:0.875rem">No content yet.</p>';
   var lines = text.split('\n');
   var html = '';
   var dayNames = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
   var categoryNames = ['NUTRITION','DIGESTION','FITNESS','MINDSET'];
-  var first = true;
+  var firstBlock = true;
+
   lines.forEach(function(line){
     var trimmed = line.trim();
-    var isDay = dayNames.some(function(d){return trimmed.indexOf(d)===0;});
-    var isCategory = categoryNames.indexOf(trimmed)===0;
-    if(isDay || isCategory){
-      html += '<div style="margin-top:'+(first?'0':'28px')+';margin-bottom:14px;font-weight:700;font-size:1rem;color:#2a2a2a;letter-spacing:0.04em">'+trimmed+'</div>';
-      first = false;
-    } else if(trimmed===''){
-      // skip blank lines, spacing handled by headers
+    if(!trimmed) return;
+
+    // Check if line STARTS WITH a day name
+    var isDay = dayNames.some(function(d){ return trimmed.toUpperCase().startsWith(d); });
+    // Check if line IS a category name exactly
+    var isCategory = categoryNames.indexOf(trimmed.toUpperCase()) >= 0;
+
+    if(isDay){
+      html += '<div style="margin-top:'+(firstBlock?'0':'28px')+';margin-bottom:12px;font-weight:700;font-size:1rem;color:#2a2a2a">'
+            + trimmed + '</div>';
+      firstBlock = false;
+    } else if(isCategory){
+      html += '<div style="margin-top:'+(firstBlock?'0':'24px')+';margin-bottom:10px;font-weight:700;font-size:0.9rem;color:#7a9e7e;text-transform:uppercase;letter-spacing:0.06em">'
+            + trimmed + '</div>';
+      firstBlock = false;
     } else {
-      first = false;
-      html += '<div style="padding:4px 0 4px 4px;line-height:1.6">'+trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
+      firstBlock = false;
+      html += '<div style="padding:3px 0 3px 8px;line-height:1.7;color:#333">'
+            + trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            + '</div>';
     }
   });
   return html;
@@ -433,7 +446,15 @@ async function generate(){
       calorieGoal=parseInt(cg)||0;
       renderCalorieProgress();
     }
-    document.getElementById('tabBody').innerHTML=formatPlanText(data.meal||'');
+    document.getElementById('tabMeal').innerHTML=formatPlanText(data.meal||'');
+    document.getElementById('tabWorkout').innerHTML=formatPlanText(data.workout||'');
+    document.getElementById('tabTips').innerHTML=formatPlanText(data.tips||'');
+    // reset to meals tab
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+    document.querySelector('.tab').classList.add('on');
+    document.getElementById('tabMeal').style.display='block';
+    document.getElementById('tabWorkout').style.display='none';
+    document.getElementById('tabTips').style.display='none';
     var newMeals=buildMealsFromPlan(data.meal);
     var newExercises=buildExercisesFromPlan(data.workout);
     if(newMeals.length){ meals=newMeals; renderMeals(); }
@@ -449,9 +470,11 @@ async function generate(){
   }
 }
 function switchTab(key,btn){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
   btn.classList.add('on');
-  document.getElementById('tabBody').innerHTML=formatPlanText(plans[key]||'');
+  document.getElementById('tabMeal').style.display = key==='meal'?'block':'none';
+  document.getElementById('tabWorkout').style.display = key==='workout'?'block':'none';
+  document.getElementById('tabTips').style.display = key==='tips'?'block':'none';
 }
 function restart(){
   document.getElementById('resultsDiv').style.display='none';
@@ -790,3 +813,5 @@ renderCalorieProgress();
 </script>
 </body>
 </html>
+
+
