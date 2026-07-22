@@ -1,182 +1,829 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ai Health — Nourish & Move</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#faf7f2;color:#2a2a2a;min-height:100vh}
+header{background:#2a2a2a;padding:14px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.leaf{width:20px;height:20px;background:#7a9e7e;border-radius:50% 50% 50% 0;transform:rotate(-45deg);flex-shrink:0}
+header h1{color:white;font-family:Georgia,serif;font-size:1rem;font-weight:400;flex:1}
+.nav{display:flex;background:#1a1a1a;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav-btn{flex:1;min-width:80px;padding:12px 8px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,0.5);font-family:inherit;font-size:0.75rem;cursor:pointer;white-space:nowrap;text-align:center}
+.nav-btn.on{color:#c4d9c6;border-bottom-color:#7a9e7e}
+.page{display:none;padding:20px 16px 80px}
+.page.on{display:block}
+.hero{background:linear-gradient(135deg,#2a2a2a,#3d3530);color:white;padding:32px 20px;text-align:center;margin:-20px -16px 24px}
+.hero h2{font-family:Georgia,serif;font-size:1.7rem;font-weight:400;margin-bottom:8px}
+.hero h2 span{color:#c4d9c6}
+.hero p{color:rgba(255,255,255,0.55);font-size:0.85rem;max-width:340px;margin:0 auto}
+.card{background:white;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px}
+.sec{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.12em;color:#7a9e7e;font-weight:600;margin-bottom:14px}
+label{display:block;font-size:0.8rem;font-weight:600;margin-bottom:5px}
+input,textarea,select{width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-family:inherit;font-size:0.875rem;background:#f8f7f4;outline:none}
+textarea{resize:vertical;min-height:60px}
+.field{margin-bottom:14px}
+hr{border:none;border-top:1px solid #eee;margin:16px 0}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.pill{padding:6px 14px;border-radius:100px;border:1.5px solid #ddd;background:#f8f7f4;font-size:0.78rem;cursor:pointer;font-family:inherit}
+.pill.on{background:#7a9e7e;border-color:#7a9e7e;color:white}
+.btn{width:100%;padding:14px;background:#2a2a2a;color:white;border:none;border-radius:10px;font-family:inherit;font-size:0.9rem;font-weight:500;cursor:pointer;margin-top:8px}
+.btn-sm{padding:8px 16px;background:#2a2a2a;color:white;border:none;border-radius:8px;font-family:inherit;font-size:0.8rem;cursor:pointer}
+.btn-outline{padding:8px 16px;background:none;border:1.5px solid #2a2a2a;border-radius:8px;font-family:inherit;font-size:0.8rem;cursor:pointer}
+.err{background:#fff0ec;border:1px solid #f4c3b3;color:#8b3a1f;border-radius:8px;padding:10px 14px;font-size:0.8rem;margin-bottom:14px;display:none}
+.spinner-wrap{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:50vh}
+.spinner{width:40px;height:40px;border:3px solid #c4d9c6;border-top-color:#7a9e7e;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tabs{display:flex;border-bottom:1px solid #eee;margin-bottom:0}
+.tab{flex:1;padding:11px 4px;background:none;border:none;border-bottom:2px solid transparent;font-family:inherit;font-size:0.78rem;font-weight:500;color:#888;cursor:pointer}
+.tab.on{color:#2a2a2a;border-bottom-color:#7a9e7e}
+.tab-body{padding:20px;font-size:0.875rem;line-height:1.6;color:#2a2a2a;min-height:160px}
 
-  const { goalWeight, healthGoals, medicalHistory, digestiveIssues, dailySchedule, mealPrep, diet, groceryBudget, calorieGoal } = req.body;
+/* CHECKLIST */
+.checklist-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f0ede8}
+.checklist-item:last-child{border-bottom:none}
+.check-box{width:22px;height:22px;border:2px solid #ddd;border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all 0.15s}
+.check-box.done{background:#7a9e7e;border-color:#7a9e7e;color:white}
+.check-text{flex:1;font-size:0.875rem;line-height:1.4}
+.check-text.done{text-decoration:line-through;color:#aaa}
+.check-delete{background:none;border:none;color:#ccc;font-size:1.1rem;cursor:pointer;padding:0 4px}
+.add-task{display:flex;gap:8px;margin-top:12px}
+.add-task input{flex:1}
+.progress-bar{background:#eee;border-radius:100px;height:8px;margin-bottom:16px;overflow:hidden}
+.progress-fill{background:#7a9e7e;height:100%;border-radius:100px;transition:width 0.3s}
+.progress-text{font-size:0.75rem;color:#888;margin-bottom:8px}
 
-  const prompt = `You are a certified nutritionist and personal trainer. Create a personalized wellness plan.
+/* TUTORIALS */
+.tutorial-card{background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px}
+.tutorial-thumb{background:linear-gradient(135deg,#2a2a2a,#3d3530);padding:32px 20px;text-align:center;font-size:3rem;position:relative}
+.tutorial-thumb .play-btn{width:48px;height:48px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:1.2rem}
+.tutorial-body{padding:16px}
+.tutorial-title{font-weight:600;font-size:0.9rem;margin-bottom:4px}
+.tutorial-meta{font-size:0.75rem;color:#888;margin-bottom:10px}
+.tutorial-expand{display:none;margin-top:12px;border-top:1px solid #eee;padding-top:12px}
+.tutorial-expand.on{display:block}
+.tutorial-step{display:flex;gap:10px;margin-bottom:10px;font-size:0.825rem;line-height:1.5}
+.step-num{width:22px;height:22px;background:#7a9e7e;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:600;flex-shrink:0;margin-top:1px}
+.video-link{display:inline-flex;align-items:center;gap:6px;background:#ff4444;color:white;padding:8px 14px;border-radius:8px;font-size:0.78rem;text-decoration:none;margin-top:8px}
 
-CRITICAL RULES:
-- Any allergy listed: NEVER include that food anywhere
-- Weight loss: low-calorie, high-fiber, high-protein foods
-- Muscle gain: high-protein foods, 2500-3000 calories
-- Vegan: no meat/fish/dairy/eggs. Vegetarian: no meat/fish
-- Bloating issues: avoid raw onions, excess beans, carbonated drinks
-- Match meals to their prep routine and budget
+/* WORKOUT GIF */
+.exercise-card{background:white;border-radius:12px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:12px}
+.exercise-header{display:flex;align-items:center;gap:12px;margin-bottom:0;cursor:pointer}
+.exercise-emoji{font-size:2rem;width:50px;height:50px;background:#f0ede8;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.exercise-info{flex:1}
+.exercise-name{font-weight:600;font-size:0.9rem}
+.exercise-meta{font-size:0.75rem;color:#888;margin-top:2px}
+.exercise-chevron{color:#aaa;font-size:0.8rem}
+.exercise-detail{display:none;margin-top:14px;border-top:1px solid #eee;padding-top:14px}
+.exercise-detail.on{display:block}
+.exercise-gif{background:linear-gradient(135deg,#e8f0e9,#d4e6d6);border-radius:10px;padding:24px;text-align:center;margin-bottom:12px;font-size:4rem;position:relative;overflow:hidden}
+.gif-label{font-size:0.7rem;color:#7a9e7e;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-top:8px}
+.muscle-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.muscle-tag{padding:4px 10px;background:#e8f0e9;color:#4a7a4e;border-radius:100px;font-size:0.72rem;font-weight:500}
+.instruction-list{font-size:0.825rem;line-height:1.7;color:#444}
 
-Person's profile:
-Goal: ${goalWeight}
-Health goals: ${healthGoals}
-Allergies/medical: ${medicalHistory || 'None'}
-Digestive issues: ${digestiveIssues || 'None'}
-Schedule: ${dailySchedule || 'Not specified'}
-Meal prep: ${mealPrep || 'Not specified'}
-Diet: ${diet || 'No restrictions'}
-Budget: ${groceryBudget || 'Not specified'}
-Daily calorie goal: ${calorieGoal || 'standard for their goals'}
+.tag{display:inline-block;padding:3px 10px;border-radius:100px;font-size:0.7rem;font-weight:500;margin-right:6px}
+.tag-green{background:#e8f0e9;color:#4a7a4e}
+.tag-orange{background:#fdf0e8;color:#b05a2a}
+</style>
+</head>
+<body>
+<header><div class="leaf"></div><h1>Ai Health</h1></header>
+<div class="nav">
+  <button class="nav-btn on" onclick="showPage('plan')">🎯 My Plan</button>
+  <button class="nav-btn" onclick="showPage('checklist')">✅ Checklist</button>
+  <button class="nav-btn" onclick="showPage('meals')">🥗 Meal Tutorials</button>
+  <button class="nav-btn" onclick="showPage('workouts')">💪 Workouts</button>
+  <button class="nav-btn" onclick="showPage('calories')">📷 Calories</button>
+</div>
 
-YOU MUST respond using ONLY this exact structure. Each day and each meal MUST be on its own separate line. No exceptions.
+<!-- MY PLAN PAGE -->
+<div class="page on" id="page-plan">
+  <div class="hero">
+    <h2>Your body. <span>Your plan.</span></h2>
+    <p>Fill in your details and get a personalized meal plan and workout routine instantly.</p>
+  </div>
 
-MEAL_START
+  <div id="formCard">
+    <div class="card">
+      <p class="sec">Your Goals</p>
+      <div class="field"><label>Goal weight and body type *</label><input id="goalWeight" placeholder="e.g. 120 lbs, curvy / slim / athletic…"/></div>
+      <div class="field"><label>Specific health goals *</label><textarea id="healthGoals" placeholder="e.g. lose 20 lbs, build muscle, more energy…"></textarea></div>
+      <div class="field"><label>Daily calorie goal (optional)</label><input id="calorieGoal" type="number" placeholder="e.g. 1600, 2000, 2800…"/></div>
+    </div>
+    <div class="card">
+      <p class="sec">Health Background</p>
+      <div class="field"><label>Medical history / allergies</label><textarea id="medicalHistory" placeholder="e.g. allergic to honey, nut allergy, diabetes…"></textarea></div>
+      <div class="field"><label>Digestive issues</label><textarea id="digestiveIssues" placeholder="e.g. bloating, IBS, acid reflux…"></textarea></div>
+    </div>
+    <div class="card">
+      <p class="sec">Lifestyle</p>
+      <div class="field"><label>Daily schedule</label><textarea id="dailySchedule" placeholder="e.g. 9–5 desk job, stay-at-home parent…"></textarea></div>
+      <div class="field"><label>Meal prep routine</label><textarea id="mealPrep" placeholder="e.g. cook on Sundays, no time to cook…"></textarea></div>
+    </div>
+    <div class="card">
+      <p class="sec">Diet & Budget</p>
+      <div class="field">
+        <label>Dietary pattern</label>
+        <div class="pills" id="pills">
+          <button class="pill" onclick="togglePill(this)">No restrictions</button>
+          <button class="pill" onclick="togglePill(this)">Vegetarian</button>
+          <button class="pill" onclick="togglePill(this)">Vegan</button>
+          <button class="pill" onclick="togglePill(this)">Gluten-free</button>
+          <button class="pill" onclick="togglePill(this)">Halal</button>
+          <button class="pill" onclick="togglePill(this)">Kosher</button>
+          <button class="pill" onclick="togglePill(this)">Keto</button>
+          <button class="pill" onclick="togglePill(this)">Paleo</button>
+        </div>
+      </div>
+      <div class="field"><label>Weekly grocery budget</label><input id="groceryBudget" placeholder="e.g. $75/week, $150/week…"/></div>
+      <div class="err" id="errMsg"></div>
+      <button class="btn" onclick="generate()">Generate My Plan →</button>
+    </div>
+  </div>
+
+  <div class="spinner-wrap" id="loadingDiv">
+    <div class="spinner"></div>
+    <p style="color:#888;font-size:0.875rem">Building your plan…</p>
+  </div>
+
+  <div id="resultsDiv" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="background:#2a2a2a;padding:16px 20px">
+        <p style="color:#c4d9c6;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Your personalized plan</p>
+        <h3 style="color:white;font-family:Georgia,serif;font-weight:400;font-size:1.2rem">Wellness Plan ✨</h3>
+      </div>
+      <div class="tabs">
+        <button class="tab on" onclick="switchTab('meal',this)">🥗 Meals</button>
+        <button class="tab" onclick="switchTab('workout',this)">💪 Workout</button>
+        <button class="tab" onclick="switchTab('tips',this)">✨ Tips</button>
+      </div>
+      <div class="tab-body" id="tabMeal"></div>
+      <div class="tab-body" id="tabWorkout" style="display:none"></div>
+      <div class="tab-body" id="tabTips" style="display:none"></div>
+    </div>
+    <button class="btn-outline" style="width:100%;margin-top:12px" onclick="restart()">← Start over</button>
+  </div>
+</div>
+
+<!-- CHECKLIST PAGE -->
+<div class="page" id="page-checklist">
+  <div class="card">
+    <p class="sec">Daily Progress</p>
+    <div class="progress-text" id="progressText">0 of 0 completed</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div id="checklistItems"></div>
+    <div class="add-task" style="margin-top:16px">
+      <input id="newTask" placeholder="Add your own task…" onkeydown="if(event.key==='Enter')addTask()"/>
+      <button class="btn-sm" onclick="addTask()">+ Add</button>
+    </div>
+  </div>
+  <div class="card">
+    <p class="sec">Suggested Daily Habits</p>
+    <p style="font-size:0.8rem;color:#888;margin-bottom:12px">Tap any habit to add it to your checklist</p>
+    <div id="suggestedHabits"></div>
+  </div>
+</div>
+
+<!-- MEAL TUTORIALS PAGE -->
+<div class="page" id="page-meals">
+  <div style="margin-bottom:16px">
+    <p style="font-size:0.8rem;color:#888">These update automatically based on your personalized meal plan — tap Generate My Plan to populate them.</p>
+  </div>
+  <div id="mealTutorials"></div>
+</div>
+
+<!-- WORKOUT TUTORIALS PAGE -->
+<div class="page" id="page-workouts">
+  <div style="margin-bottom:16px">
+    <p style="font-size:0.8rem;color:#888">These update automatically based on your personalized workout plan — tap any exercise to watch a tutorial.</p>
+  </div>
+  <div id="workoutTutorials"></div>
+</div>
+
+<!-- CALORIE TRACKER PAGE -->
+<div class="page" id="page-calories">
+  <div class="card">
+    <p class="sec">Today's Calories</p>
+    <div class="progress-text" id="calorieProgressText">0 of 0 cal</div>
+    <div class="progress-bar"><div class="progress-fill" id="calorieProgressFill" style="width:0%"></div></div>
+    <div class="field" style="margin-top:14px">
+      <label>Daily calorie goal</label>
+      <input id="calorieGoalTracker" type="number" placeholder="e.g. 1600, 2000, 2800…" oninput="updateCalorieGoal()"/>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="sec">Scan Your Food</p>
+    <p style="font-size:0.8rem;color:#888;margin-bottom:14px">Take a photo or upload an image of your meal and AI will estimate the calories.</p>
+    <input type="file" id="foodPhoto" accept="image/*" capture="environment" style="display:none" onchange="analyzeFood(event)"/>
+    <button class="btn" onclick="document.getElementById('foodPhoto').click()">📷 Take or Upload Photo</button>
+    <div class="err" id="calorieErr"></div>
+    <div id="calorieLoading" style="display:none;text-align:center;padding:20px 0">
+      <div class="spinner" style="margin:0 auto 12px"></div>
+      <p style="color:#888;font-size:0.85rem">Analyzing your food…</p>
+    </div>
+    <div id="foodPreview" style="display:none;margin-top:14px">
+      <img id="foodPreviewImg" style="width:100%;border-radius:10px;margin-bottom:12px"/>
+      <div id="foodResult" style="background:#f8f7f4;border-radius:10px;padding:14px;font-size:0.875rem;line-height:1.7"></div>
+      <button class="btn-sm" style="margin-top:10px;width:100%" onclick="addFoodToLog()">+ Add to Today's Log</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="sec">Today's Log</p>
+    <div id="foodLog"></div>
+  </div>
+</div>
+
+<script>
+// ── NAVIGATION ──
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  event.target.classList.add('on');
+}
+
+// ── PLAN DATA ──
+var plans={};
+var MEAL=`7-DAY MEAL PLAN
+(~1,400–1,600 calories/day for weight loss)
+
 MONDAY
-Breakfast: [specific food]
-Lunch: [specific food]
-Dinner: [specific food]
-Snack: [specific food]
-TUESDAY
-Breakfast: [specific food]
-Lunch: [specific food]
-Dinner: [specific food]
-Snack: [specific food]
-WEDNESDAY
-Breakfast: [specific food]
-Lunch: [specific food]
-Dinner: [specific food]
-Snack: [specific food]
-THURSDAY
-Breakfast: [specific food]
-Lunch: [specific food]
-Dinner: [specific food]
-Snack: [specific food]
-FRIDAY
-Breakfast: [specific food]
-Lunch: [specific food]
-Dinner: [specific food]
-Snack: [specific food]
-SATURDAY
-Breakfast: [specific food]
-Lunch: [specific food]
-Dinner: [specific food]
-Snack: [specific food]
-SUNDAY
-Breakfast: [specific food]
-Lunch: [specific food]
-Dinner: [specific food]
-Snack: [specific food]
-MEAL_END
+• Breakfast: 2 scrambled eggs + spinach + herbal tea
+• Lunch: Grilled chicken breast + quinoa + steamed zucchini
+• Dinner: Baked salmon + roasted sweet potato + green beans
+• Snack: Rice cakes + almond butter
 
-WORKOUT_START
-MONDAY
-Focus: [type of workout]
-Exercise 1: [name] - [sets x reps or duration]
-Exercise 2: [name] - [sets x reps or duration]
-Exercise 3: [name] - [sets x reps or duration]
 TUESDAY
-Focus: [type of workout]
-Exercise 1: [name] - [sets x reps or duration]
-Exercise 2: [name] - [sets x reps or duration]
-WEDNESDAY
-Focus: [type of workout]
-Exercise 1: [name] - [sets x reps or duration]
-THURSDAY
-Focus: [type of workout]
-Exercise 1: [name] - [sets x reps or duration]
-Exercise 2: [name] - [sets x reps or duration]
-Exercise 3: [name] - [sets x reps or duration]
-FRIDAY
-Focus: [type of workout]
-Exercise 1: [name] - [sets x reps or duration]
-Exercise 2: [name] - [sets x reps or duration]
-SATURDAY
-Focus: [type of workout]
-Exercise 1: [name] - [sets x reps or duration]
-Exercise 2: [name] - [sets x reps or duration]
-SUNDAY
-Focus: Rest or light activity
-WORKOUT_END
+• Breakfast: Oatmeal + blueberries + cinnamon
+• Lunch: Turkey lettuce wraps + sliced cucumber
+• Dinner: Stir-fry chicken + bok choy + brown rice
+• Snack: Hard boiled egg + baby carrots
 
-TIPS_START
+WEDNESDAY
+• Breakfast: Greek yogurt (plain) + strawberries
+• Lunch: Tuna + olive oil + lemon on rice crackers
+• Dinner: Ground turkey taco bowl — rice, salsa, avocado, romaine
+• Snack: Handful of walnuts
+
+THURSDAY
+• Breakfast: Smoothie — spinach, banana, almond milk, protein powder
+• Lunch: Lentil soup (low sodium)
+• Dinner: Baked chicken thighs + roasted carrots + mashed cauliflower
+• Snack: Apple slices + peanut butter
+
+FRIDAY
+• Breakfast: 2 eggs + sautéed kale + whole grain toast
+• Lunch: Grilled shrimp salad — romaine, cucumber, olive oil dressing
+• Dinner: Turkey meatballs + zucchini noodles + marinara
+• Snack: Plain rice cakes
+
+SATURDAY
+• Breakfast: Veggie omelette (peppers, spinach, mushrooms)
+• Lunch: Chicken and veggie soup
+• Dinner: Baked cod + steamed broccoli + quinoa
+• Snack: Celery + almond butter
+
+SUNDAY
+• Breakfast: Oatmeal + banana + chia seeds
+• Lunch: Turkey and avocado wrap (corn tortilla)
+• Dinner: Grilled salmon + asparagus + brown rice
+• Snack: Hard boiled egg
+
+✓ Avoid carbonated drinks, raw onions, chewing gum
+✓ Peppermint tea after meals helps digestion
+✓ No honey — check all labels`;
+
+var WORKOUT=`WEEKLY WORKOUT ROUTINE
+(3–5 days/week)
+
+MONDAY — Full Body Strength (40 min)
+• Squats — 3 × 12
+• Lunges — 3 × 10 each leg
+• Push-ups — 3 × 10
+• Dumbbell rows — 3 × 12
+• Plank — 3 × 30 sec
+
+TUESDAY — Cardio (30 min)
+• Brisk walk, jog, or cycling
+• Heart rate 60–70% of max
+
+WEDNESDAY — Rest or yoga
+
+THURSDAY — Lower Body (40 min)
+• Sumo squats — 3 × 15
+• Glute bridges — 3 × 15
+• Step-ups — 3 × 10 each
+• Calf raises — 3 × 20
+
+FRIDAY — Cardio + Core (35 min)
+• 20 min walk/jog
+• Crunches — 3 × 15
+• Bicycle crunches — 3 × 15
+• Leg raises — 3 × 12
+
+SATURDAY — Upper Body (35 min)
+• Shoulder press — 3 × 12
+• Bicep curls — 3 × 12
+• Tricep dips — 3 × 12
+• Bent-over rows — 3 × 12
+
+SUNDAY — Rest or 20 min walk`;
+
+var TIPS=`TIPS & HABITS
+
 NUTRITION
-Tip: [specific tip for their goals]
-Tip: [specific tip for their goals]
+• Drink 16 oz water before every meal
+• Never skip breakfast
+• Prep proteins and grains on Sunday
+• Read labels — honey hides in many products
+
 DIGESTION
-Tip: [specific tip for their digestive issues]
-Tip: [specific tip]
+• Eat slowly and chew thoroughly
+• Peppermint tea after meals
+• Avoid carbonated drinks and gum
+• Keep a food journal to find bloat triggers
+
 FITNESS
-Tip: [specific tip for their schedule]
-Tip: [specific tip]
+• Start with 3 days/week and build up
+• Walk 10 min after dinner
+• Stretch 5 min before bed
+
 MINDSET
-Tip: [specific tip]
-Tip: [specific tip]
-TIPS_END`;
+• Weigh yourself once a week
+• Track meals in MyFitnessPal
+• Sleep 7–8 hours every night
+• Progress photos every 2 weeks`;
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'API error');
-    const text = data.content?.[0]?.text;
-    if (!text) throw new Error('No response from AI');
-
-    // Extract sections
-    const mealMatch = text.match(/MEAL_START([\s\S]*?)MEAL_END/);
-    const workoutMatch = text.match(/WORKOUT_START([\s\S]*?)WORKOUT_END/);
-    const tipsMatch = text.match(/TIPS_START([\s\S]*?)TIPS_END/);
-
-    // If delimiters not found, try to parse the raw text by splitting on day names
-    let meal = mealMatch ? mealMatch[1].trim() : '';
-    let workout = workoutMatch ? workoutMatch[1].trim() : '';
-    let tips = tipsMatch ? tipsMatch[1].trim() : '';
-
-    // If AI ignored format, force-parse it by inserting line breaks before day names and meal types
-    function forceFormat(raw) {
-      if (!raw) return '';
-      const days = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
-      const categories = ['NUTRITION','DIGESTION','FITNESS','MINDSET'];
-      let result = raw;
-      // Insert newline before each day name
-      days.forEach(d => {
-        result = result.replace(new RegExp('([.!?]\\s*)(' + d + ')', 'g'), '$1\n$2');
-        result = result.replace(new RegExp('(\\s)(' + d + ':', 'g'), '\n$2');
-      });
-      categories.forEach(c => {
-        result = result.replace(new RegExp('([.!?]\\s*)(' + c + ')', 'g'), '$1\n$2');
-      });
-      // Insert newline before Breakfast/Lunch/Dinner/Snack/Exercise/Tip/Focus
-      ['Breakfast','Lunch','Dinner','Snack','Exercise 1','Exercise 2','Exercise 3','Focus','Tip'].forEach(k => {
-        result = result.replace(new RegExp('([.!?]\\s*)(' + k + ':', 'g'), '$1\n$2:');
-      });
-      return result.trim();
-    }
-
-    // If sections not found, try to split the whole text
-    if (!meal && !workout && !tips) {
-      const formatted = forceFormat(text);
-      meal = formatted;
-    }
-
-    res.status(200).json({
-      meal: meal || '',
-      workout: workout || '',
-      tips: tips || ''
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// ── PLAN FORM ──
+function togglePill(el){
+  if(el.textContent==='No restrictions'){
+    document.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+    el.classList.add('on');
+  } else {
+    document.querySelector('.pill').classList.remove('on');
+    el.classList.toggle('on');
   }
 }
+function getDiet(){
+  var s=[...document.querySelectorAll('.pill.on')].map(p=>p.textContent);
+  return s.length?s.join(', '):'No restrictions';
+}
+function formatPlanText(text){
+  if(!text) return '<p style="color:#888;font-size:0.875rem;padding:16px">No content yet — generate your plan first!</p>';
+  
+  var days = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
+  var categories = ['NUTRITION','DIGESTION','FITNESS','MINDSET'];
+  var mealTypes = ['Breakfast','Lunch','Dinner','Snack'];
+  var html = '';
+  var firstBlock = true;
+
+  var lines = text.split('\n');
+  lines.forEach(function(line){
+    var trimmed = line.trim();
+    if(!trimmed) return;
+
+    var isDay = days.some(function(d){ return trimmed.toUpperCase() === d || trimmed.toUpperCase().startsWith(d + ' ') || trimmed.toUpperCase().startsWith(d + ':') || trimmed.toUpperCase().startsWith(d + '-'); });
+    var isCategory = categories.indexOf(trimmed.toUpperCase()) >= 0;
+    var isMealType = mealTypes.some(function(m){ return trimmed.startsWith(m + ':'); });
+    var isExercise = trimmed.startsWith('Exercise') || trimmed.startsWith('Focus:');
+    var isTip = trimmed.startsWith('Tip:');
+
+    if(isDay){
+      html += '<div style="margin-top:'+(firstBlock?'4px':'28px')+';margin-bottom:10px;font-weight:700;font-size:1rem;color:#2a2a2a;padding-bottom:4px;border-bottom:1px solid #eee">'
+            + trimmed + '</div>';
+      firstBlock = false;
+    } else if(isCategory){
+      html += '<div style="margin-top:'+(firstBlock?'4px':'24px')+';margin-bottom:10px;font-weight:700;font-size:0.85rem;color:#7a9e7e;text-transform:uppercase;letter-spacing:0.08em">'
+            + trimmed + '</div>';
+      firstBlock = false;
+    } else if(isMealType){
+      html += '<div style="padding:4px 0 4px 12px;line-height:1.6;color:#333;display:flex;gap:6px">'
+            + '<span style="color:#7a9e7e;font-weight:600;min-width:80px">' + trimmed.split(':')[0] + ':</span>'
+            + '<span>' + trimmed.split(':').slice(1).join(':').trim() + '</span>'
+            + '</div>';
+      firstBlock = false;
+    } else if(isExercise || isTip){
+      html += '<div style="padding:4px 0 4px 12px;line-height:1.6;color:#333">• '
+            + trimmed.replace(/^(Exercise \d+:|Focus:|Tip:)\s*/,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            + '</div>';
+      firstBlock = false;
+    } else {
+      firstBlock = false;
+      html += '<div style="padding:3px 0 3px 12px;line-height:1.6;color:#555">'
+            + trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            + '</div>';
+    }
+  });
+  return html;
+}
+async function generate(){
+  var gw=document.getElementById('goalWeight').value.trim();
+  var hg=document.getElementById('healthGoals').value.trim();
+  if(!gw||!hg){
+    var e=document.getElementById('errMsg');
+    e.textContent='Please fill in goal weight and health goals.';
+    e.style.display='block'; return;
+  }
+  document.getElementById('errMsg').style.display='none';
+  document.getElementById('formCard').style.display='none';
+  document.getElementById('loadingDiv').style.display='flex';
+  try {
+    var response = await fetch('/api/generate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        goalWeight: gw,
+        healthGoals: hg,
+        medicalHistory: document.getElementById('medicalHistory').value,
+        digestiveIssues: document.getElementById('digestiveIssues').value,
+        dailySchedule: document.getElementById('dailySchedule').value,
+        mealPrep: document.getElementById('mealPrep').value,
+        diet: getDiet(),
+        groceryBudget: document.getElementById('groceryBudget').value,
+        calorieGoal: document.getElementById('calorieGoal').value
+      })
+    });
+    var data = await response.json();
+    if(!response.ok) throw new Error(data.error||'Something went wrong');
+    plans={meal:data.meal||'',workout:data.workout||'',tips:data.tips||''};
+    var cg=document.getElementById('calorieGoal').value;
+    if(cg){
+      document.getElementById('calorieGoalTracker').value=cg;
+      calorieGoal=parseInt(cg)||0;
+      renderCalorieProgress();
+    }
+    document.getElementById('tabMeal').innerHTML=formatPlanText(data.meal||'');
+    document.getElementById('tabWorkout').innerHTML=formatPlanText(data.workout||'');
+    document.getElementById('tabTips').innerHTML=formatPlanText(data.tips||'');
+    // reset to meals tab
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+    document.querySelector('.tab').classList.add('on');
+    document.getElementById('tabMeal').style.display='block';
+    document.getElementById('tabWorkout').style.display='none';
+    document.getElementById('tabTips').style.display='none';
+    var newMeals=buildMealsFromPlan(data.meal);
+    var newExercises=buildExercisesFromPlan(data.workout);
+    if(newMeals.length){ meals=newMeals; renderMeals(); }
+    if(newExercises.length){ exercises=newExercises; renderWorkouts(); }
+    document.getElementById('loadingDiv').style.display='none';
+    document.getElementById('resultsDiv').style.display='block';
+  } catch(err) {
+    document.getElementById('loadingDiv').style.display='none';
+    document.getElementById('formCard').style.display='block';
+    var e=document.getElementById('errMsg');
+    e.textContent='Error: '+err.message;
+    e.style.display='block';
+  }
+}
+function switchTab(key,btn){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  btn.classList.add('on');
+  document.getElementById('tabMeal').style.display = key==='meal'?'block':'none';
+  document.getElementById('tabWorkout').style.display = key==='workout'?'block':'none';
+  document.getElementById('tabTips').style.display = key==='tips'?'block':'none';
+}
+function restart(){
+  document.getElementById('resultsDiv').style.display='none';
+  document.getElementById('formCard').style.display='block';
+}
+
+// ── CHECKLIST ──
+var checklist=[
+  {text:'Drink 8 glasses of water',done:false,default:true},
+  {text:'Eat a healthy breakfast',done:false,default:true},
+  {text:'30 min of movement',done:false,default:true},
+  {text:'Eat veggies with lunch',done:false,default:true},
+  {text:'No sugary drinks today',done:false,default:true},
+  {text:'7–8 hours of sleep',done:false,default:true},
+];
+var suggested=[
+  'Take a 10 min walk after dinner','Meal prep for tomorrow','Stretch for 5 minutes','Log your meals in MyFitnessPal','Avoid snacking after 8pm','Take your vitamins','Cook at home tonight','Eat slowly — no screens during meals'
+];
+
+function renderChecklist(){
+  var done=checklist.filter(c=>c.done).length;
+  var pct=checklist.length?Math.round(done/checklist.length*100):0;
+  document.getElementById('progressText').textContent=done+' of '+checklist.length+' completed';
+  document.getElementById('progressFill').style.width=pct+'%';
+  var html='';
+  checklist.forEach(function(item,i){
+    html+='<div class="checklist-item">';
+    html+='<div class="check-box'+(item.done?' done':'')+'" onclick="toggleCheck('+i+')">'+(item.done?'✓':'')+'</div>';
+    html+='<span class="check-text'+(item.done?' done':'')+'">'+item.text+'</span>';
+    html+='<button class="check-delete" onclick="deleteCheck('+i+')">×</button>';
+    html+='</div>';
+  });
+  document.getElementById('checklistItems').innerHTML=html;
+
+  var shtml='';
+  suggested.forEach(function(s){
+    shtml+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0ede8">';
+    shtml+='<span style="font-size:0.85rem">'+s+'</span>';
+    shtml+='<button class="btn-sm" onclick="addSuggested(\''+s.replace(/'/g,"\\'")+'\')" style="flex-shrink:0;margin-left:10px">+ Add</button>';
+    shtml+='</div>';
+  });
+  document.getElementById('suggestedHabits').innerHTML=shtml;
+}
+function toggleCheck(i){checklist[i].done=!checklist[i].done;renderChecklist();}
+function deleteCheck(i){checklist.splice(i,1);renderChecklist();}
+function addTask(){
+  var v=document.getElementById('newTask').value.trim();
+  if(!v)return;
+  checklist.push({text:v,done:false,default:false});
+  document.getElementById('newTask').value='';
+  renderChecklist();
+}
+function addSuggested(s){
+  checklist.push({text:s,done:false,default:false});
+  renderChecklist();
+}
+renderChecklist();
+
+// ── MEAL TUTORIALS ──
+var meals=[
+  {emoji:'🍳',title:'Scrambled Eggs & Spinach',time:'10 min',calories:'220 cal',tags:['High Protein','Low Carb'],youtube:'https://www.youtube.com/results?search_query=scrambled+eggs+spinach+recipe',steps:['Heat a non-stick pan over medium heat and add a teaspoon of olive oil.','Whisk 2 eggs with a pinch of salt and pepper.','Add a handful of fresh spinach to the pan and wilt for 1 minute.','Pour in the eggs and gently stir until just set — about 2 minutes.','Serve immediately with herbal tea or black coffee.']},
+  {emoji:'🥗',title:'Grilled Chicken Quinoa Bowl',time:'25 min',calories:'480 cal',tags:['High Protein','Meal Prep'],youtube:'https://www.youtube.com/results?search_query=grilled+chicken+quinoa+bowl+recipe',steps:['Cook ½ cup quinoa in 1 cup water for 15 minutes until fluffy.','Season chicken breast with olive oil, salt, pepper, and garlic powder.','Grill or pan-fry chicken 6–7 min each side until cooked through.','Slice chicken and place over quinoa.','Add steamed zucchini and a drizzle of lemon juice.']},
+  {emoji:'🐟',title:'Baked Salmon & Sweet Potato',time:'30 min',calories:'520 cal',tags:['Omega-3','Anti-Bloat'],youtube:'https://www.youtube.com/results?search_query=baked+salmon+sweet+potato+healthy',steps:['Preheat oven to 400°F (200°C).','Cube sweet potato, toss with olive oil and salt, roast 20 min.','Place salmon on a lined baking sheet. Season with lemon, dill, salt.','Bake salmon for 12–15 minutes until it flakes easily.','Serve with steamed green beans on the side.']},
+  {emoji:'🥣',title:'Overnight Oats',time:'5 min prep',calories:'340 cal',tags:['Quick','Meal Prep'],youtube:'https://www.youtube.com/results?search_query=overnight+oats+healthy+recipe',steps:['Add ½ cup rolled oats to a jar or container.','Pour in ½ cup almond milk and stir.','Add chia seeds, cinnamon, and fresh blueberries.','Cover and refrigerate overnight.','Grab and go in the morning — no cooking needed!']},
+  {emoji:'🌮',title:'Turkey Taco Bowl',time:'20 min',calories:'460 cal',tags:['High Protein','Quick'],youtube:'https://www.youtube.com/results?search_query=healthy+turkey+taco+bowl+recipe',steps:['Cook ½ cup brown rice according to package directions.','Brown ground turkey in a pan with cumin, chili powder, and salt.','Drain any excess fat from the turkey.','Build the bowl: rice, turkey, romaine, salsa, and sliced avocado.','Squeeze fresh lime juice over the top.']},
+  {emoji:'🥤',title:'Green Protein Smoothie',time:'5 min',calories:'280 cal',tags:['Quick','Anti-Bloat'],youtube:'https://www.youtube.com/results?search_query=green+protein+smoothie+recipe+healthy',steps:['Add 1 cup almond milk to a blender.','Add 1 handful of spinach and 1 banana.','Add 1 scoop of vanilla protein powder.','Blend for 30–45 seconds until smooth.','Pour and drink immediately for best nutrition.']},
+];
+
+// ── DYNAMIC TUTORIAL HELPERS ──
+function mealEmoji(name){
+  var n=name.toLowerCase();
+  if(n.includes('egg')) return '🍳';
+  if(n.includes('salmon')||n.includes('fish')||n.includes('cod')||n.includes('tuna')||n.includes('shrimp')) return '🐟';
+  if(n.includes('chicken')) return '🍗';
+  if(n.includes('beef')||n.includes('steak')||n.includes('pork')) return '🥩';
+  if(n.includes('turkey')) return '🦃';
+  if(n.includes('salad')) return '🥗';
+  if(n.includes('smoothie')||n.includes('shake')) return '🥤';
+  if(n.includes('oat')||n.includes('yogurt')||n.includes('granola')||n.includes('cottage cheese')) return '🥣';
+  if(n.includes('rice')||n.includes('bowl')||n.includes('quinoa')) return '🍚';
+  if(n.includes('wrap')||n.includes('taco')||n.includes('burrito')) return '🌮';
+  if(n.includes('soup')) return '🍲';
+  if(n.includes('toast')||n.includes('bread')||n.includes('pancake')||n.includes('waffle')) return '🍞';
+  if(n.includes('tofu')||n.includes('lentil')||n.includes('bean')||n.includes('chickpea')) return '🌱';
+  return '🍽️';
+}
+function exerciseEmoji(name){
+  var n=name.toLowerCase();
+  if(n.includes('squat')) return '🏋️';
+  if(n.includes('push')) return '💪';
+  if(n.includes('plank')) return '🧘';
+  if(n.includes('run')||n.includes('jog')||n.includes('walk')||n.includes('cardio')||n.includes('sprint')||n.includes('bike')||n.includes('cycling')) return '🏃';
+  if(n.includes('curl')) return '💪';
+  if(n.includes('row')) return '🚣';
+  if(n.includes('press')) return '🏋️';
+  if(n.includes('lunge')) return '🦵';
+  if(n.includes('bridge')||n.includes('glute')) return '🍑';
+  if(n.includes('crunch')||n.includes('sit-up')||n.includes('situp')||n.includes('ab')) return '🔥';
+  if(n.includes('deadlift')) return '🏋️';
+  if(n.includes('stretch')||n.includes('yoga')||n.includes('foam')||n.includes('recovery')) return '🧘';
+  return '💪';
+}
+function extractMealItems(mealText){
+  if(!mealText) return [];
+  var items=[];
+  mealText.split('\n').forEach(function(line){
+    var m=line.match(/(Breakfast|Lunch|Dinner|Snack)\s*:\s*(.+)/i);
+    if(m){
+      var food=m[2].trim();
+      var calMatch=food.match(/\((\d+)\s*cal[^\)]*\)/i);
+      var calories=calMatch?calMatch[1]+' cal':'';
+      food=food.replace(/\s*\(\d+\s*cal[^\)]*\)/i,'').replace(/\.$/,'').trim();
+      if(food) items.push({name:food,calories:calories,mealType:m[1]});
+    }
+  });
+  var seen={},unique=[];
+  items.forEach(function(it){
+    var key=it.name.toLowerCase();
+    if(!seen[key]){ seen[key]=true; unique.push(it); }
+  });
+  return unique.slice(0,14);
+}
+function extractExerciseItems(workoutText){
+  if(!workoutText) return [];
+  var dayNames=['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
+  var items=[];
+  workoutText.split('\n').forEach(function(line){
+    var trimmed=line.trim();
+    if(!trimmed) return;
+    var isDayHeader=dayNames.some(function(d){return trimmed.toUpperCase().indexOf(d)===0;});
+    if(isDayHeader) return;
+    var clean=trimmed.replace(/^[•\-\*\u2022]\s*/,'');
+    var m=clean.match(/^(.+?)\s*[–—\-]\s*(.+)$/);
+    if(m){
+      var name=m[1].trim();
+      var sets=m[2].trim();
+      if(name && sets) items.push({name:name,sets:sets});
+    }
+  });
+  var seen={},unique=[];
+  items.forEach(function(it){
+    var key=it.name.toLowerCase();
+    if(!seen[key]){ seen[key]=true; unique.push(it); }
+  });
+  return unique.slice(0,14);
+}
+function buildMealsFromPlan(mealText){
+  return extractMealItems(mealText).map(function(it){
+    return {
+      emoji: mealEmoji(it.name),
+      title: it.name,
+      time: '',
+      calories: it.calories,
+      tags: [it.mealType],
+      youtube: 'https://www.youtube.com/results?search_query='+encodeURIComponent(it.name+' recipe'),
+      steps: []
+    };
+  });
+}
+function buildExercisesFromPlan(workoutText){
+  return extractExerciseItems(workoutText).map(function(it){
+    return {
+      emoji: exerciseEmoji(it.name),
+      name: it.name,
+      sets: it.sets,
+      muscles: [],
+      instruction: '',
+      youtube: 'https://www.youtube.com/results?search_query='+encodeURIComponent('how to do '+it.name+' proper form tutorial')
+    };
+  });
+}
+
+function renderMeals(){
+  var html='';
+  if(meals.length===0){
+    html='<p style="font-size:0.85rem;color:#888">Generate a plan on the My Plan tab to see meal tutorials personalized to you!</p>';
+  }
+  meals.forEach(function(m,i){
+    html+='<div class="tutorial-card">';
+    html+='<div class="tutorial-thumb">'+m.emoji+'</div>';
+    html+='<div class="tutorial-body">';
+    html+='<div class="tutorial-title">'+m.title+'</div>';
+    if(m.time||m.calories){
+      html+='<div class="tutorial-meta">'+(m.time?'⏱ '+m.time+' ':'')+(m.calories?'🔥 '+m.calories:'')+'</div>';
+    }
+    (m.tags||[]).forEach(function(t){if(t)html+='<span class="tag tag-green">'+t+'</span>';});
+    html+='<div style="display:flex;gap:8px;margin-top:10px">';
+    if(m.steps && m.steps.length){
+      html+='<button class="btn-sm" onclick="toggleMeal('+i+')">📖 Steps</button>';
+    }
+    html+='<a class="video-link" href="'+m.youtube+'" target="_blank">▶ Watch Tutorial</a>';
+    html+='</div>';
+    if(m.steps && m.steps.length){
+      html+='<div class="tutorial-expand" id="meal-'+i+'">';
+      m.steps.forEach(function(s,si){
+        html+='<div class="tutorial-step"><div class="step-num">'+(si+1)+'</div><div>'+s+'</div></div>';
+      });
+      html+='</div>';
+    }
+    html+='</div></div>';
+  });
+  document.getElementById('mealTutorials').innerHTML=html;
+}
+function toggleMeal(i){
+  var el=document.getElementById('meal-'+i);
+  el.classList.toggle('on');
+}
+renderMeals();
+
+// ── WORKOUT TUTORIALS ──
+var exercises=[
+  {emoji:'🏋️',name:'Squats',sets:'3 sets × 12 reps',muscles:['Quads','Glutes','Core'],difficulty:'Beginner',instruction:'Stand with feet shoulder-width apart. Keep your chest up and back straight. Lower your hips as if sitting in a chair until thighs are parallel to the floor. Drive through your heels to stand back up. Keep knees tracking over toes throughout.'},
+  {emoji:'🦵',name:'Lunges',sets:'3 sets × 10 each leg',muscles:['Quads','Glutes','Hamstrings'],difficulty:'Beginner',instruction:'Stand tall with feet together. Step one foot forward about 2 feet. Lower your back knee toward the floor, keeping your front knee over your ankle. Push through your front heel to return to start. Alternate legs each rep.'},
+  {emoji:'💪',name:'Push-Ups',sets:'3 sets × 10 reps',muscles:['Chest','Shoulders','Triceps'],difficulty:'Beginner',instruction:'Start in a high plank with hands slightly wider than shoulders. Keep your body in a straight line from head to heels. Lower your chest to the floor by bending your elbows. Push back up to start. Modify by dropping to your knees if needed.'},
+  {emoji:'🍑',name:'Glute Bridges',sets:'3 sets × 15 reps',muscles:['Glutes','Hamstrings','Core'],difficulty:'Beginner',instruction:'Lie on your back with knees bent and feet flat on the floor hip-width apart. Press through your heels and squeeze your glutes to lift your hips toward the ceiling. Hold at the top for 1 second. Lower slowly back down.'},
+  {emoji:'🧘',name:'Plank',sets:'3 sets × 30 seconds',muscles:['Core','Shoulders','Back'],difficulty:'Beginner',instruction:'Start in a forearm plank with elbows directly under shoulders. Keep your body in a straight line — don\'t let hips sag or rise. Engage your core and breathe steadily. Hold for the full time. Rest 30 seconds between sets.'},
+  {emoji:'🚴',name:'Bicycle Crunches',sets:'3 sets × 15 reps',muscles:['Abs','Obliques'],difficulty:'Beginner',instruction:'Lie on your back with hands behind your head. Lift shoulders off the floor and bring your right knee toward your chest while twisting your left elbow toward it. Alternate sides in a pedaling motion. Keep lower back pressed to the floor.'},
+  {emoji:'🏃',name:'Sumo Squats',sets:'3 sets × 15 reps',muscles:['Inner Thighs','Glutes','Quads'],difficulty:'Beginner',instruction:'Stand with feet wider than shoulder-width, toes pointing out at 45°. Keep your chest tall and core tight. Lower down by bending both knees until thighs are parallel to the floor. Drive through heels to stand. Great for inner thighs and glutes.'},
+  {emoji:'💪',name:'Bicep Curls',sets:'3 sets × 12 reps',muscles:['Biceps','Forearms'],difficulty:'Beginner',instruction:'Hold a dumbbell in each hand with arms fully extended. Keep elbows tucked close to your body. Curl the weights up toward your shoulders by bending at the elbow. Squeeze at the top, then slowly lower back down. Avoid swinging your body.'},
+];
+
+function renderWorkouts(){
+  var html='';
+  if(exercises.length===0){
+    html='<p style="font-size:0.85rem;color:#888">Generate a plan on the My Plan tab to see workout tutorials personalized to you!</p>';
+  }
+  exercises.forEach(function(ex,i){
+    html+='<div class="exercise-card">';
+    html+='<div class="exercise-header" onclick="toggleExercise('+i+')">';
+    html+='<div class="exercise-emoji">'+ex.emoji+'</div>';
+    html+='<div class="exercise-info"><div class="exercise-name">'+ex.name+'</div><div class="exercise-meta">'+(ex.sets||'')+'</div></div>';
+    html+='<span class="exercise-chevron">▼</span>';
+    html+='</div>';
+    html+='<div class="exercise-detail" id="ex-'+i+'">';
+    html+='<div class="exercise-gif"><div style="font-size:5rem">'+ex.emoji+'</div><div class="gif-label">Tap to see form</div></div>';
+    if(ex.muscles && ex.muscles.length){
+      html+='<div class="muscle-tags">';
+      ex.muscles.forEach(function(m){html+='<span class="muscle-tag">'+m+'</span>';});
+      html+='</div>';
+    }
+    if(ex.instruction){
+      html+='<div class="instruction-list">'+ex.instruction+'</div>';
+    }
+    html+='<a class="video-link" href="'+ex.youtube+'" target="_blank" style="margin-top:10px">▶ Watch Tutorial</a>';
+    html+='</div></div>';
+  });
+  document.getElementById('workoutTutorials').innerHTML=html;
+}
+function toggleExercise(i){
+  document.getElementById('ex-'+i).classList.toggle('on');
+}
+renderWorkouts();
+
+// ── CALORIE TRACKER ──
+var calorieGoal = 0;
+var foodLog = [];
+var lastAnalyzedFood = null;
+
+function updateCalorieGoal(){
+  calorieGoal = parseInt(document.getElementById('calorieGoalTracker').value) || 0;
+  renderCalorieProgress();
+}
+
+function renderCalorieProgress(){
+  var total = foodLog.reduce(function(sum,f){return sum + (f.calories||0);}, 0);
+  document.getElementById('calorieProgressText').textContent = total + ' of ' + (calorieGoal||'—') + ' cal';
+  var pct = calorieGoal ? Math.min(100, Math.round(total/calorieGoal*100)) : 0;
+  document.getElementById('calorieProgressFill').style.width = pct+'%';
+
+  var html='';
+  if(foodLog.length===0){
+    html='<p style="font-size:0.85rem;color:#888">No food logged yet today. Scan a meal to get started!</p>';
+  } else {
+    foodLog.forEach(function(f,i){
+      html+='<div class="checklist-item">';
+      html+='<span style="font-size:1.3rem">'+f.emoji+'</span>';
+      html+='<span class="check-text" style="flex:1;margin-left:10px">'+f.name+' — <strong>'+f.calories+' cal</strong></span>';
+      html+='<button class="check-delete" onclick="removeFoodLog('+i+')">×</button>';
+      html+='</div>';
+    });
+  }
+  document.getElementById('foodLog').innerHTML=html;
+}
+function removeFoodLog(i){
+  foodLog.splice(i,1);
+  renderCalorieProgress();
+}
+
+function analyzeFood(event){
+  var file = event.target.files[0];
+  if(!file) return;
+  var errEl = document.getElementById('calorieErr');
+  errEl.style.display='none';
+  document.getElementById('foodPreview').style.display='none';
+  document.getElementById('calorieLoading').style.display='block';
+
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    var base64 = e.target.result.split(',')[1];
+    var mediaType = file.type || 'image/jpeg';
+    document.getElementById('foodPreviewImg').src = e.target.result;
+    try {
+      var response = await fetch('/api/analyze-food', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ image: base64, mediaType: mediaType })
+      });
+      var data = await response.json();
+      if(!response.ok) throw new Error(data.error||'Something went wrong');
+      lastAnalyzedFood = data;
+      var html = '<strong style="font-size:1rem">'+data.emoji+' '+data.name+'</strong><br/>';
+      html += '<span style="color:#7a9e7e;font-weight:600;font-size:1.1rem">'+data.calories+' calories</span><br/><br/>';
+      html += data.description;
+      document.getElementById('foodResult').innerHTML = html;
+      document.getElementById('calorieLoading').style.display='none';
+      document.getElementById('foodPreview').style.display='block';
+    } catch(err){
+      document.getElementById('calorieLoading').style.display='none';
+      errEl.textContent = 'Error: '+err.message;
+      errEl.style.display='block';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function addFoodToLog(){
+  if(!lastAnalyzedFood) return;
+  foodLog.push(lastAnalyzedFood);
+  renderCalorieProgress();
+  document.getElementById('foodPreview').style.display='none';
+  document.getElementById('foodPhoto').value='';
+  lastAnalyzedFood=null;
+}
+renderCalorieProgress();
+
+</script>
+</body>
+</html>
